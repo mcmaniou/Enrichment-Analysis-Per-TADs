@@ -65,8 +65,8 @@ getSequences <- function(input.data, outputs_folder){
     group_by(tad_name)
   new.groups <- group_split(new.TADs)
   
-  iterations <- c(1:10)
-  k <- 10+1
+  iterations <- c(1:5)
+  k <- 5+1
   #iterations <- c(1:length(new.groups))
   #k <- length(new.groups)+1
   seq.tad.number <- data.table(start = numeric(k),
@@ -111,7 +111,7 @@ getSequences <- function(input.data, outputs_folder){
   return(seq.tad.number)
 }
 
-motif_outputs <- function(report.list, motif_output_folder){
+motifOutputs <- function(report.list){
   
   csv_perTAD <- data.table(TAD = character(),
                            TFs = character(),
@@ -184,14 +184,12 @@ motif_outputs <- function(report.list, motif_output_folder){
     dplyr::select(TFs,Motifs)
   data.visual <- left_join(data.visual,table.TFs.Motifs)
   
-  fwrite(data.visual, paste0(motif_output_folder, "/data for TFs visualization.csv"), 
-                 row.names = FALSE, sep = ",", quote = FALSE)
-  newList <- list(table_perTAD = csv_perTAD,table_perTFs = csv_perTF)
+  newList <- list(table_perTAD = csv_perTAD,table_perTFs = csv_perTF, data.visual = data.visual)
   return(newList)
 }
 
 
-motif_enrich <- function(motif.data, motif_output_folder, p.adjustment.method){
+motifEnrich <- function(motif.data, motif_output_folder){
   
   #number of cores available for motif enrichment analysis
   #N <- 3
@@ -216,7 +214,7 @@ motif_enrich <- function(motif.data, motif_output_folder, p.adjustment.method){
   # load the pre-compiled lognormal background
   data(PWMLogn.hg19.MotifDb.Hsap)
   l <- 1
-  iterations <- c(1:10)
+  iterations <- c(1:5)
   #iterations <- c(1:nrow(seq.tad.number))
   for (i in iterations){
     
@@ -241,7 +239,7 @@ motif_enrich <- function(motif.data, motif_output_folder, p.adjustment.method){
   
   #report.list <- dget(paste0(motif_output_folder,"/report_motif.txt"))
   
-  listMotifEA <- motif_outputs(report.list, motif_output_folder)
+  listMotifEA <- motifOutputs(report.list)
   
   return(listMotifEA)
   

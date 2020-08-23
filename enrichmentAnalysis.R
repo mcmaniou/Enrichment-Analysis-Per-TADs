@@ -6,7 +6,6 @@ library(ggplot2)
 library(data.table)
 library(dplyr)
 library(tidyr)
-library(MotifDb)
 library(ggseqlogo)
 library(seqinr)
 library(httr)
@@ -19,9 +18,9 @@ library(igraph)
 library(ggraph)
 library(hrbrthemes)
 library(extrafont)
-library(RColorBrewer)
 library(pathview)
 library(gridExtra)
+library(saveImageHigh)
 
 start_time = Sys.time()
 
@@ -30,7 +29,7 @@ source("goPathwayEnrich.R")
 source("visualization.R")
 
 #databases used from EnrichR
-dbs<- c("GO_Molecular_Function_2018","GO_Biological_Process_2018","KEGG_2019_Human")
+dbs <- c("GO_Molecular_Function_2018","GO_Biological_Process_2018","KEGG_2019_Human")
 
 #gene coverage of the databases
 genes.cover <- c(11459,14433,7802)
@@ -47,7 +46,7 @@ system = "win"
 dir_name = "Datasets"
 output_folder = "Outputs"
 
-folder.names <- create.folders(output_folder)
+folder.names <- createFolders(output_folder)
 
 goAllOutputs <- folder.names[1]
 goAllImages <- folder.names[2]
@@ -57,7 +56,7 @@ keggAllOutputs <- folder.names[5]
 keggAllImages <- folder.names[6]
 keggPerOutputs <- folder.names[7] 
 keggPerImages <- folder.names[8]
-motifOutputs <- folder.names[9]
+motifOutputsFolder <- folder.names[9]
 motifImageOutputs <- folder.names[10]  
 
 biodata = fread(paste(dir_name, "/integrated_table_with_sign_tads-ENSG.csv", sep = ""))
@@ -71,52 +70,69 @@ listAll <- enrichAll(biodata,dbs)
 data.type <- c("GO.MF","GO.BP","KEGG")
 
 #GO MF Terms
-data.MF <- data_analysis_all(listAll$GO.MF, data.type[1],listAll$data.with.genes, genes.cover[1], goAllOutputs,p.adjust.method)
+listMFAll <- analysisAll(listAll$GO.MF, data.type[1],listAll$data.with.genes, genes.cover[1],p.adjust.method)
 
 #GO BP Terms
-data.BP <- data_analysis_all(listAll$GO.BP, data.type[2],listAll$data.with.genes, genes.cover[2], goAllOutputs,p.adjust.method)
+listBPAll <- analysisAll(listAll$GO.BP, data.type[2],listAll$data.with.genes, genes.cover[2],p.adjust.method)
 
 #KEGG Pathways
-pathview.all <- getKEGGIds(listAll$KEGG)          #get pathview input data
-data.KEGG.all <- data_analysis_all(listAll$KEGG, data.type[3],listAll$data.with.genes, genes.cover[3], keggAllOutputs,p.adjust.method)
+pathviewAll <- getKEGGIds(listAll$KEGG)          #get pathview input data
+listKEGGAll <- analysisAll(listAll$KEGG, data.type[3],listAll$data.with.genes, genes.cover[3],p.adjust.method)
 
 #join GO Molecular Function and Biological Process outputs
-data_all <- full_join(data.MF, data.BP, by = "TAD")
+dataAll <- full_join(listMFAll$data.withP, listBPAll$data.withP, by = "TAD")
 
 
 #enrichment per TAD
 listPerTAD <- enrichPerTAD(biodata, dbs)
 
 #GO MF Terms
-data.MF <- analysis_perTAD(listPerTAD$GO.MF, data.type[1],listPerTAD$data.with.genes, genes.cover[1], goPerOutputs,p.adjust.method)
+listMFPerTAD <- analysisPerTAD(listPerTAD$GO.MF, data.type[1],listPerTAD$data.with.genes, genes.cover[1], p.adjust.method)
 
 #GO BP Terms
-data.BP <- analysis_perTAD(listPerTAD$GO.BP, data.type[2],listPerTAD$data.with.genes, genes.cover[2], goPerOutputs,p.adjust.method)
+listBPPerTAD <- analysisPerTAD(listPerTAD$GO.BP, data.type[2],listPerTAD$data.with.genes, genes.cover[2], p.adjust.method)
 
 #KEGG Pathways
-pathview.perTAD <- getKEGGIds(listPerTAD$KEGG)        #get pathview input data
-data.KEGG.perTAD <- analysis_perTAD(listPerTAD$KEGG, data.type[3],listPerTAD$data.with.genes, genes.cover[3], keggPerOutputs,p.adjust.method)
+pathviewPerTAD <- getKEGGIds(listPerTAD$KEGG)        #get pathview input data
+listKEGGPerTAD <- analysisPerTAD(listPerTAD$KEGG, data.type[3],listPerTAD$data.with.genes, genes.cover[3], p.adjust.method)
 
 #join GO Molecular Function and Biological Process outputs
-data_perTAD <- full_join(data.MF, data.BP, by = "TAD")
+dataPerTAD <- full_join(listMFPerTAD$data.withP, listBPPerTAD$data.withP, by = "TAD")
 
 #motif enrichment
-listMotif <- motif_enrich(biodata, motifOutputs,p.adjust.method)
+listMotif <- motifEnrich(biodata, motifOutputsFolder)
 
 ########### Output Files ########## 
 end_enrich_all = Sys.time()
 
-fwrite(data_all, paste(goAllOutputs, "/over-represented GO terms-enrichment all.csv", sep = ""), 
+#enrichment all
+fwrite(dataAll, paste(goAllOutputs, "/over-represented GO terms-enrichment all.csv", sep = ""), 
        row.names = FALSE, sep = "\t", quote = FALSE)
-fwrite(data.KEGG.all, paste(keggAllOutputs, "/over-represented KEGG Pathways-enrichment all.csv", sep = ""), 
+fwrite(listMFAll$data.perTerm, paste0(goAllOutputs, "/GO MF Terms in different TADs.csv"), 
+      row.names = FALSE, sep = "\t", quote = FALSE)
+fwrite(listBPAll$data.perTerm, paste0(goAllOutputs, "/GO BP Terms in different TADs.csv"), 
+      row.names = FALSE, sep = "\t", quote = FALSE)
+fwrite(listKEGGAll$data.withP, paste(keggAllOutputs, "/over-represented KEGG Pathways-enrichment all.csv", sep = ""), 
        row.names = FALSE, sep = "\t", quote = FALSE)
-fwrite(data_perTAD, paste(goPerOutputs, "/over-represented GO terms-enrichment per tad.csv", sep = ""), 
+fwrite(listKEGGAll$data.perTerm, paste0(keggAllOutputs, "/KEGG Pathways in different TADs.csv"), 
        row.names = FALSE, sep = "\t", quote = FALSE)
-fwrite(data.KEGG.perTAD, paste(keggPerOutputs, "/over-represented KEGG Pathways-enrichment per tad.csv", sep = ""), 
+
+#enrichment per TAD
+fwrite(dataPerTAD, paste(goPerOutputs, "/over-represented GO terms-enrichment per tad.csv", sep = ""), 
        row.names = FALSE, sep = "\t", quote = FALSE)
-fwrite(listMotif$table_perTAD, paste0(motifOutputs, "/over-represented TFs in each tad.csv"), 
+fwrite(listMFPerTAD$data.perTerm, paste0(goPerOutputs, "/GO MF Terms in different TADs.csv"), 
        row.names = FALSE, sep = "\t", quote = FALSE)
-fwrite(listMotif$table_perTFs, paste0(motifOutputs, "/TFs in different TADs.csv"), 
+fwrite(listBPPerTAD$data.perTerm, paste0(goPerOutputs, "/GO BP Terms in different TADs.csv"), 
+       row.names = FALSE, sep = "\t", quote = FALSE)
+fwrite(listKEGGPerTAD$data.withP, paste(keggPerOutputs, "/over-represented KEGG Pathways-enrichment per tad.csv", sep = ""), 
+       row.names = FALSE, sep = "\t", quote = FALSE)
+fwrite(listKEGGPerTAD$data.perTerm, paste0(keggPerOutputs, "/KEGG Pathways in different TADs.csv"), 
+       row.names = FALSE, sep = "\t", quote = FALSE)
+
+#motif enrichment
+fwrite(listMotif$table_perTAD, paste0(motifOutputsFolder, "/over-represented TFs in each tad.csv"), 
+       row.names = FALSE, sep = "\t", quote = FALSE)
+fwrite(listMotif$table_perTFs, paste0(motifOutputsFolder, "/TFs in different TADs.csv"), 
        row.names = FALSE, sep = "\t", quote = FALSE)
 
 ########### Visualization ##########
@@ -124,17 +140,20 @@ fwrite(listMotif$table_perTFs, paste0(motifOutputs, "/TFs in different TADs.csv"
 setGraphFonts(system)
 
 #enrich all visualization
-enrichrVisual(goAllOutputs , goAllImages)
-enrichrVisual(keggAllOutputs , keggAllImages)
-pathVisual(biodata, pathview.all ,keggAllImages)
+enrichrVisual(goAllImages,"GO MF Terms",listMFAll$data.visual)
+enrichrVisual(goAllImages, "GO BP Terms",listBPAll$data.visual)
+enrichrVisual(keggAllImages, "KEGG Pathways",listKEGGAll$data.visual)
+pathVisual(biodata, pathviewAll ,keggAllImages)
 
 #enrich per TAD visualization
-enrichrVisual(goPerOutputs , goPerImages)
-enrichrVisual(keggPerOutputs , keggPerImages)
-pathVisual(biodata, pathview.perTAD ,keggPerImages)
+enrichrVisual(goPerImages,"GO MF Terms",listMFPerTAD$data.visual)
+enrichrVisual(goPerImages,"GO BP Terms",listBPPerTAD$data.visual)
+enrichrVisual(keggPerImages, "KEGG Pathways",listKEGGPerTAD$data.visual)
+pathVisual(biodata, pathviewPerTAD ,keggPerImages)
 
 #motif enrichment analysis visualization
-motifVisual(motifImageOutputs, motifOutputs)
+report.list <- dget(paste0(motifOutputsFolder,"/report_motif.txt"))
+motifVisual(motifImageOutputs, motifOutputsFolder, listMotifEA$data.visual, report.list)
 
 total_time <- Sys.time()
 

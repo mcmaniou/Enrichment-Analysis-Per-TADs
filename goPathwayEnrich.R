@@ -1,4 +1,4 @@
-calculate_p_value <- function(data ,data_ ,Gene.Coverage ,adjust.method ) {
+calculatePvalue <- function(data ,data_ ,Gene.Coverage ,adjust.method ) {
   
   data <- data[which(data$tad_name != "NA"),]
   tads <- unique(data$tad_name)
@@ -146,7 +146,7 @@ enrichPerTAD <- function(biodata,dbs){
   
 }
 
-produce_outputs <- function(data.with.p,type,analysis_folder){
+produceOutputs <- function(data.with.p,type){
   if ( str_detect(type,"GO")){
     
     data.with.p$Term <- str_remove(data.with.p$Term, "\\)")
@@ -177,7 +177,9 @@ produce_outputs <- function(data.with.p,type,analysis_folder){
     
     column.term <- paste0(type,".Term")
     column.id <- paste0(type,".number")
-    colnames(data.with.p) <- c("TAD",column.term,column.id,"P.value","P.adjust")
+    column.p <- paste0(type,".P.value")
+    column.adj <- paste0(type, ".P.adjust")
+    colnames(data.with.p) <- c("TAD",column.term,column.id,column.p,column.adj)
     colnames(data.visual) <- c("TAD","Term","ID","P.value","P.adjust")
     colnames(data.per.term) <- c("GO.Term","GO.ID","TAD","P.value","P.adjust")
     
@@ -209,20 +211,18 @@ produce_outputs <- function(data.with.p,type,analysis_folder){
     
   }
   
-  fwrite(data.visual, paste0(analysis_folder, "/data for ",type," visualization.csv"), 
-         row.names = FALSE, sep = "\t", quote = FALSE)
-  fwrite(data.per.term, paste0(analysis_folder, "/",type," in different TADs.csv"), 
-         row.names = FALSE, sep = "\t", quote = FALSE)
   
-  return(data.with.p)
+  newList <- list(data.visual = data.visual, data.perTerm = data.per.term, data.withP = data.with.p)
+  return(newList)
 }
 
-data_analysis_all <- function(enriched_terms, type,data_selected, genes.coverage, analysis_folder, p.adjust.method){
+
+analysisAll <- function(enriched_terms, type,data_selected, genes.coverage, p.adjust.method){
     
     if (nrow(enriched_terms)>0){
       
       enriched_terms <- enriched_terms %>%
-        dplyr::select(Genes,Term,Overlap)
+        dplyr::select(Term,Overlap,Genes)
       
       #calculate number of genes per term in database 
       enriched_terms <- enriched_terms %>%
@@ -242,16 +242,17 @@ data_analysis_all <- function(enriched_terms, type,data_selected, genes.coverage
                                 P.adjust = numeric(),
                                 stringsAsFactors = F)
       
-      data.with.p <- calculate_p_value(data = data.extended,data_ = data_selected, Gene.Coverage = genes.coverage, adjust.method = p.adjust.method)
+      data.with.p <- calculatePvalue(data = data.extended,data_ = data_selected, Gene.Coverage = genes.coverage, adjust.method = p.adjust.method)
       
-      data.with.p <- produce_outputs(data.with.p,type,analysis_folder)
+      resultsList <- produceOutputs(data.with.p,type)
       
-      return(data.with.p)
+      return(resultsList)
     }
   
 }
 
-analysis_perTAD <- function(enriched_terms,type, data_, genes.coverage, analysis_folder, p.adjust.method){
+
+analysisPerTAD <- function(enriched_terms,type, data_, genes.coverage, p.adjust.method){
 
     enriched_terms <- enriched_terms %>%
       dplyr::select(Genes,Term,Overlap)
@@ -286,11 +287,11 @@ analysis_perTAD <- function(enriched_terms,type, data_, genes.coverage, analysis
                               P.adjust = numeric(),
                               stringsAsFactors = F)
     
-    data.with.p <- calculate_p_value(data = data.extended,data_ = data_, Gene.Coverage = genes.coverage, adjust.method = p.adjust.method)
+    data.with.p <- calculatePvalue(data = data.extended,data_ = data_, Gene.Coverage = genes.coverage, adjust.method = p.adjust.method)
     
-    data.with.p <- produce_outputs(data.with.p,type,analysis_folder)
+    resultsList <- produceOutputs(data.with.p,type)
     
-    return(data.with.p)
+    return(resultsList)
   
 }
 
@@ -321,7 +322,7 @@ getKEGGIds <- function(enriched_KEGG){
 }
 
 
-create.folders <- function(output_folder){
+createFolders <- function(output_folder){
 
   go_output_folder = paste0(output_folder,"/GO EA Outputs")
   kegg_output_folder = paste0(output_folder,"/Pathways EA Outputs")
