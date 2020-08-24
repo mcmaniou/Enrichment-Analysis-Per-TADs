@@ -286,7 +286,7 @@ enrichrVisual <- function(output_folder, type, data.visual){
 
 pathVisual <- function(full.data, pathview.input , output_folder){
   
-  pathview.input <- pathview.input[which(pathview.input$hsa.ids != "NA"),]
+  pathview.input <- pathview.input[which(pathview.input$ID != "NA"),]
   #plot - pathview
   data.S <- full.data %>% 
     dplyr::select(Gene_id, diff)
@@ -309,7 +309,7 @@ pathVisual <- function(full.data, pathview.input , output_folder){
     path <- merge(path, data.S,by.x = "Genes", by.y = "Gene_id")
     path <- unique(path)
     path <- group_by(path,Genes) %>%
-      dplyr::summarise(hsa.ids,Term,Genes,diff = mean(diff)) %>%
+      dplyr::summarise(ID,Term,Genes,diff = mean(diff)) %>%
       as.data.table() %>%
       unique()
  
@@ -318,17 +318,17 @@ pathVisual <- function(full.data, pathview.input , output_folder){
     
     if (nrow(path)>1){
       
-      dir <- paste0(new.dir,"/",path$hsa.ids[1])
+      dir <- paste0(new.dir,"/",path$ID[1])
       dir.create(dir, showWarnings = FALSE)
       
-      current.folder <- paste0(getwd(),"/",path$hsa.ids[1],".pathview.png")
-      new.folder <- paste0(dir,"/",path$hsa.ids[1],".pathview.png")
+      current.folder <- paste0(getwd(),"/",path$ID[1],".pathview.png")
+      new.folder <- paste0(dir,"/",path$ID[1],".pathview.png")
       
       p.input <- as.matrix(path[,3])
       rownames(p.input) <- rownames(path)
      
        p <- pathview(gene.data  = p.input,
-                    pathway.id =  path$hsa.ids[1],
+                    pathway.id =  path$ID[1],
                     species    = "hsa",
                     gene.idtype = "SYMBOL",
                     same.layer = F,   #two-layer graph (node colors and labels are added + official gene symbols)
@@ -342,7 +342,6 @@ pathVisual <- function(full.data, pathview.input , output_folder){
       
     }
   }
-  
 }
 
 perTADPlots <- function(report.list,image_output_folder){
@@ -480,7 +479,7 @@ perTFsPlots <- function(report.list, data.plot3.4, image_output_folder){
     temp <- setorder(temp, -P.value)
     
     if (nrow(temp)>29){
-      text = "Showing top 30 Terms, for the complete list consult the output csv"
+      text = "Showing top 30 Terms, for the complete list consult <TFs in different TADs.csv>"
       temp <- temp[1:30,]
     }else{
       text = ""
@@ -494,7 +493,7 @@ perTFsPlots <- function(report.list, data.plot3.4, image_output_folder){
       geom_histogram(fill="#66ccff", color="#e9ecef", alpha=0.9, stat = "identity", binwidth = 0.5) +
       labs(title = paste0("P values of ",temp$folder.name[1]," in different TADs"), 
            subtitle = text)+
-      ylab("P value")+
+      ylab("Mean P value")+
       xlab("TAD number")+
       theme_ipsum() +
       theme(
@@ -508,7 +507,7 @@ perTFsPlots <- function(report.list, data.plot3.4, image_output_folder){
     #print(p3)
     #dev.off()
     
-    save_as_png(print(p3), file.name =paste(string, "/Barplot.png", sep = ""), height = (0.5*nrow(temp)+2), width = 13)
+    save_as_png(print(p3), file.name =paste(string, "/Barplot.png", sep = ""), height = (0.2*nrow(temp)+3), width = 13)
     
     
     #plot4
@@ -531,7 +530,7 @@ perTFsPlots <- function(report.list, data.plot3.4, image_output_folder){
     
     #print(p4)
     #dev.off() 
-    save_as_png(print(p4), file.name =paste(string, "/Motifs.png", sep = ""))
+    save_as_png(print(p4), file.name =paste(string, "/Motifs.png", sep = ""), width = 14.5, height = 6.1)
     
   }
   

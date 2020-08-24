@@ -299,26 +299,32 @@ getKEGGIds <- function(enriched_KEGG){
   
   enriched_KEGG <- enriched_KEGG %>%
     dplyr::select(Term, Genes)
+  
   enriched_KEGG <- enriched_KEGG %>% 
     group_by(Term) %>%
     summarise(Term,
               Genes = paste(Genes, collapse = ";"),) %>%
     as.data.table()
+  
   enriched_KEGG <- unique(enriched_KEGG)
   
-  #data for Pathview hsa ids
-  data(paths.hsa)
+  enriched_KEGG$ID <- "NA"
+  iter <- c(1:nrow(enriched_KEGG))
+  for (i in iter){
+    if (str_detect(enriched_KEGG$Term[i],"\\(")){
+      split_term <- str_split(enriched_KEGG$Term[i],"\\(",simplify = T)
+      enriched_KEGG$Term[i] <- split_term[1]
+    }
+    enriched_KEGG$Term[i] <- str_replace(enriched_KEGG$Term[i],"/","")
+    k <- keggFind("pathway",c(enriched_KEGG$Term[i]))
+    if (!is_empty(k)){
+      enriched_KEGG$ID[i] <- str_replace(names(k[1]),"path:map","hsa")
+    }
+  }
   
-  #get their kegg ids and save for later
-  pathview.data <- data.table(hsa.ids = names(paths.hsa),
-                              Term = paths.hsa,
-                              stringsAsFactors = FALSE)
-  pathview.data <- merge(pathview.data,enriched_KEGG,by = "Term") %>%
-    dplyr::select(hsa.ids,Term,Genes)
-  
-  pathview.data <- unique(pathview.data)
-  
-  return(pathview.data)
+  enriched_KEGG <- enriched_KEGG[which(enriched_KEGG$ID != "NA"),]
+
+  return(enriched_KEGG)
 }
 
 

@@ -21,6 +21,7 @@ library(extrafont)
 library(pathview)
 library(gridExtra)
 library(saveImageHigh)
+library(KEGGREST)
 
 start_time = Sys.time()
 
