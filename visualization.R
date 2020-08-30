@@ -110,8 +110,6 @@ histogramPlot <- function(string,type,data.visual){
 
 networkPlot <- function(string,type,data.visual){
   #plot 3
-  #plot network graph only for GO terms
-  if (str_detect(type,"GO")){
     
     #choose only 10 largest groups
     go_count <- dplyr::count(data.visual,Term)
@@ -166,7 +164,7 @@ networkPlot <- function(string,type,data.visual){
     #print(network)
     #dev.off()
     save_as_png(print(network), file.name =paste(string, "/Top 10 ",type," network graph", ".png", sep = ""), height = 7, width = 17)
-  }
+  
   
 }
 
