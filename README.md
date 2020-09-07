@@ -71,6 +71,6 @@ Centre for Research and Technology Hellas (CERTH) and then processed with the op
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 
