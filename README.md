@@ -67,7 +67,7 @@ In the main script, the user can change the following parameters:
 ## Data
 
 The raw sample input data used in this project were provided by the Institute of Applied Biosciences (INAB), 
-Centre for Research and Technology Hellas (CERTH) and then processed with the open-source tool TnterTADs (https://github.com/nikopech/InterTADs). 
+Centre for Research and Technology Hellas (CERTH) and then processed with the open-source tool [InterTADs](https://github.com/nikopech/InterTADs). 
 
 ## License
 
