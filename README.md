@@ -62,7 +62,7 @@ In the main script, the user can change the following parameters:
 3. The minimum number of genes in over-represented terms ```min.genes```
 (default value is ```3```)
 4. The OS of the local machine ```system```
-(default is ```"win"```)
+(default value is ```"win"```)
 
 ## Data
 
