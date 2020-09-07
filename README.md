@@ -52,7 +52,7 @@ source("enrichmentAnalysis.R")
 
 If you want to change the inpuut data, the path of the file must be provided in the main script.
 
-The output is stored in the Outputs folder.
+The output is stored in the [Outputs](Outputs) folder.
 
 In the main script, the user can change the following parameters: 
 1. The method used for adjustment of the p-values of the enrichment analysis ```p.adjust.method```
@@ -71,6 +71,6 @@ Centre for Research and Technology Hellas (CERTH) and then processed with the op
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details
 
 
