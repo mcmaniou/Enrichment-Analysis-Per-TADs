@@ -1,3 +1,8 @@
+#This file contains functions used in the "enrichmentAnalysis.R" script
+
+
+#This function is called by the "motifEnrich" function
+#It is used to find the sequences, that correspond to TFBS from the genomic coordinates of the events
 mergeSequences <- function(data){
   
   #filter for the sequences related to TFs location
@@ -56,7 +61,9 @@ mergeSequences <- function(data){
 }
 
 
-
+#This function is called by the "motifEnrich" function
+#It is used to query the Rest Ensembl API  
+#It gets the DNA sequences that correspond to the genomic coordinates of the events
 getSequences <- function(input.data, outputs_folder){
   
   #query Ensembl Rest Api to get the sequences 
@@ -65,10 +72,10 @@ getSequences <- function(input.data, outputs_folder){
     group_by(tad_name)
   new.groups <- group_split(new.TADs)
   
-  iterations <- c(1:5)
-  k <- 5+1
-  #iterations <- c(1:length(new.groups))
-  #k <- length(new.groups)+1
+  #iterations <- c(1:5)
+  #k <- 5+1
+  iterations <- c(1:length(new.groups))
+  k <- length(new.groups)+1
   seq.tad.number <- data.table(start = numeric(k),
                                end = numeric(k),
                                tad = character(k),
@@ -111,6 +118,10 @@ getSequences <- function(input.data, outputs_folder){
   return(seq.tad.number)
 }
 
+
+#This function is called by the "motifEnrich" function
+#It manipulates the enriched data after the analysis and creates three output data.tables 
+#to be used for the Output csv files and the visualization
 motifOutputs <- function(report.list){
   
   csv_perTAD <- data.table(TAD = character(),
@@ -122,6 +133,10 @@ motifOutputs <- function(report.list){
                           TAD = character(),
                           P.value = character(),
                           Motifs = character())
+  
+  topMotifs <- data.table(target = character(),
+                          p.value = numeric(),
+                          id = character())
   
   iterations <- c(1: length(report.list))
   for (i in iterations){
@@ -137,6 +152,11 @@ motifOutputs <- function(report.list){
       as.data.table()%>%
       unique()
     csv_perTAD <- rbind(csv_perTAD,perTAD)
+    
+    perTF.topMotif <- temp %>%
+      dplyr::select(target,p.value,id)
+    
+    topMotifs <- rbind(topMotifs, perTF.topMotif)
     
     perTF <- temp %>%
       dplyr::select(target,tad,p.value,id) %>%
@@ -184,11 +204,31 @@ motifOutputs <- function(report.list){
     dplyr::select(TFs,Motifs)
   data.visual <- left_join(data.visual,table.TFs.Motifs)
   
+  topMotifs <- topMotifs %>%
+    group_by(target, id) %>%
+    summarise(target, id, p.value = mean (p.value)) %>%
+    unique()
+  
+  topMotifs <- topMotifs %>%
+    group_by(target) %>%
+    summarise(target, P.value = min(p.value), id, p.value)
+  
+  topMotifs <- topMotifs[which(topMotifs$p.value == topMotifs$P.value),]
+  
+  topMotifs <- dplyr::select(topMotifs, target, id)
+  colnames(topMotifs) <- c("TFs","top.motif")
+  
+  data.visual <- left_join(data.visual,topMotifs)
+  csv_perTF <- left_join(csv_perTF,topMotifs)
+  
   newList <- list(table_perTAD = csv_perTAD,table_perTFs = csv_perTF, data.visual = data.visual)
   return(newList)
 }
 
 
+#This function is called by the "enrichmentAnalysis.R" script
+#It performs enrichment analysis using the PWMEnrich tool
+#PWMEnrich input is the DNA sequences grouped per TAD
 motifEnrich <- function(motif.data, motif_output_folder){
   
   #number of cores available for motif enrichment analysis
@@ -235,7 +275,7 @@ motifEnrich <- function(motif.data, motif_output_folder){
   #useBigMemoryPWMEnrich(FALSE)
   
   file.create(paste0(motif_output_folder,"/report_motif.txt"), showWarnings = FALSE)
-  dput(paste0(motif_output_folder,"/report_motif.txt"), file = "report_motif.txt")
+  dput(report.list, file = paste0(motif_output_folder,"/report_motif.txt"))
   
   #report.list <- dget(paste0(motif_output_folder,"/report_motif.txt"))
   

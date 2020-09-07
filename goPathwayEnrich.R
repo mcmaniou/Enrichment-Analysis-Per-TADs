@@ -1,3 +1,8 @@
+#This file contains functions used in the "enrichmentAnalysis.R" script
+
+
+#This function is called by the "analysisAll" and "analysisPerTAD" functions
+#It is used to calcualte the P value and the adjusted P value for every Term per TAD
 calculatePvalue <- function(data ,data_ ,Gene.Coverage ,adjust.method ) {
   
   data <- data[which(data$tad_name != "NA"),]
@@ -48,7 +53,11 @@ calculatePvalue <- function(data ,data_ ,Gene.Coverage ,adjust.method ) {
   return(data.with.p) 
 }
 
-enrichAll <- function(biodata, dbs){
+
+#This function is called by the "enrichmentAnalysis.R" script
+#It performs enrichment analysis using the Enrichr tool
+#Enrichr input is all the genes of the dataset
+enrichAll <- function(biodata, dbs, threshold){
   
   #preparing data for enrichR
   data_selected <- biodata %>% 
@@ -59,24 +68,28 @@ enrichAll <- function(biodata, dbs){
     dplyr::select(Gene_id,tad_name) %>%
     unique()
   dataForEnrich <-c(data_selected$Gene_id)
+  dataForEnrich <- unique(dataForEnrich) 
   
   #Enrichment with GO Molecular Function terms, GO Biological Process terms and KEGG Pathways
   #using enrichr interface to connect to EnrichR
   enriched <- enrichr(dataForEnrich, dbs)
   
   enriched_MF <- as.data.table(enriched[[dbs[1]]])
-  enriched_MF <- subset(enriched_MF, P.value < 0.05)
+  enriched_MF <- subset(enriched_MF, Adjusted.P.value < threshold)
   enriched_BP <- as.data.table(enriched[[dbs[2]]])
-  enriched_BP <- subset(enriched_BP, P.value < 0.05)
+  enriched_BP <- subset(enriched_BP, Adjusted.P.value < threshold)
   enriched_KEGG <- as.data.table(enriched[[dbs[3]]])
-  enriched_KEGG <- subset(enriched_KEGG, P.value < 0.05)
+  enriched_KEGG <- subset(enriched_KEGG, Adjusted.P.value < threshold)
   
   newList <- list(GO.MF = enriched_MF,GO.BP = enriched_BP,KEGG = enriched_KEGG,data.with.genes = data_selected)
   return(newList)
 }
 
 
-enrichPerTAD <- function(biodata,dbs){
+#This function is called by the "enrichmentAnalysis.R" script
+#It performs enrichment analysis using the Enrichr tool
+#Enrichr input is the genes of the dataset grouped per TAD
+enrichPerTAD <- function(biodata,dbs, threshold){
   
   #preparing data for enrichR
   full.tads <- biodata %>%
@@ -126,7 +139,7 @@ enrichPerTAD <- function(biodata,dbs){
       enriched_terms <- as.data.table(enriched[[dbs[l]]])
       
       if (nrow(enriched_terms)>0){
-        enriched_terms <- subset(enriched_terms, P.value < 0.05)
+        enriched_terms <- subset(enriched_terms, Adjusted.P.value < threshold)
         enriched_terms <- enriched_terms %>%
           dplyr::select(Term,Overlap,Genes)
         
@@ -146,6 +159,10 @@ enrichPerTAD <- function(biodata,dbs){
   
 }
 
+
+#This function is called by the "analysisAll" and "analysisPerTAD" functions
+#It manipulates the enriched data after the analysis and creates three output data.tables 
+#to be used for the Output csv files and the visualization
 produceOutputs <- function(data.with.p,type){
   if ( str_detect(type,"GO")){
     
@@ -217,7 +234,9 @@ produceOutputs <- function(data.with.p,type){
 }
 
 
-analysisAll <- function(enriched_terms, type,data_selected, genes.coverage, p.adjust.method){
+#This function is called by the "enrichmentAnalysis.R" script
+#It manipulates the enriched data and performs hypergeometric test
+analysisAll <- function(enriched_terms, type,data_selected, genes.coverage, p.adjust.method, min_genes){
     
     if (nrow(enriched_terms)>0){
       
@@ -229,6 +248,7 @@ analysisAll <- function(enriched_terms, type,data_selected, genes.coverage, p.ad
         separate(Overlap, c("numerator", "denominator"), sep = "\\/")
       enriched_terms$numerator <- as.numeric(as.character(enriched_terms$numerator))
       enriched_terms$denominator <- as.numeric(as.character(enriched_terms$denominator))
+      enriched_terms <- enriched_terms[which(enriched_terms$numerator >= min_genes),]
       
       data.extended <- enriched_terms %>%
         separate_rows(Genes, sep = ";", convert = TRUE) %>%
@@ -252,7 +272,9 @@ analysisAll <- function(enriched_terms, type,data_selected, genes.coverage, p.ad
 }
 
 
-analysisPerTAD <- function(enriched_terms,type, data_, genes.coverage, p.adjust.method){
+#This function is called by the "enrichmentAnalysis.R" script
+#It manipulates the enriched data and performs hypergeometric test
+analysisPerTAD <- function(enriched_terms,type, data_, genes.coverage, p.adjust.method, min_genes){
 
     enriched_terms <- enriched_terms %>%
       dplyr::select(Genes,Term,Overlap)
@@ -262,6 +284,7 @@ analysisPerTAD <- function(enriched_terms,type, data_, genes.coverage, p.adjust.
       separate(Overlap, c("numerator", "denominator"), sep = "\\/")
     enriched_terms$numerator <- as.numeric(as.character(enriched_terms$numerator))
     enriched_terms$denominator <- as.numeric(as.character(enriched_terms$denominator))
+    enriched_terms <- enriched_terms[which(enriched_terms$numerator >= min_genes),]
     
     enriched_terms <- enriched_terms %>%
       dplyr::select(Term, denominator, Genes)%>%
@@ -295,6 +318,9 @@ analysisPerTAD <- function(enriched_terms,type, data_, genes.coverage, p.adjust.
   
 }
 
+
+#This function is called by the "enrichmentAnalysis.R" script
+#It is used to query the KEGG Pathway DB about the Kegg ids of the pathways returned from the enrichment analysis
 getKEGGIds <- function(enriched_KEGG){
   
   enriched_KEGG <- enriched_KEGG %>%
@@ -328,6 +354,8 @@ getKEGGIds <- function(enriched_KEGG){
 }
 
 
+#This function is called by the "enrichmentAnalysis.R" script
+#It creates the output folders
 createFolders <- function(output_folder){
 
   go_output_folder = paste0(output_folder,"/GO EA Outputs")
