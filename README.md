@@ -50,6 +50,8 @@ In order to run the project, using the sample input provided in the Datasets fol
 source("enrichmentAnalysis.R")
 ```
 
+If you want to change the inpuut data, the path of the file must be provided in the main script.
+
 The output is stored in the Outputs folder.
 
 In the main script, the user can change the following parameters: 
