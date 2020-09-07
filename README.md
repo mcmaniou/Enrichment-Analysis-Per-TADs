@@ -1,6 +1,6 @@
 # enrichment-analysis-perTADs
 
-This project presents an algorithm for correlation of Chromosomal Locations with functional biological processes (e.g. Gene Ontology Terms, KEGG Pathways, Transcription Factors) taking into account the TADs, that they correspond to. 
+This project presents an algorithm for correlation of Chromosomal Locations with functional biological processes (e.g. Gene Ontology Terms, KEGG Pathways, Transcription Factors), taking into account the TADs that they correspond to. 
 
 ## Installing
 
