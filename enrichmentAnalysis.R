@@ -41,10 +41,10 @@ genes.cover <- c(11459,14433,7802)
 p.adjust.method <- "fdr"
 
 #cut-off enrichment adjusted p-value
-cut_off <- 0.05
+cut.off <- 0.05
 
 #min number of genes in over-represented terms
-min_genes <- 3
+min.genes <- 3
 
 #RStudio supports different fonts for different operating systems
 system = "win"
@@ -72,37 +72,37 @@ biodata = fread(paste(dir_name, "/integrated_table_with_sign_tads-sample_input.c
 ########### Enrichment + Data Analysis ##########
 
 #enrichment all
-listAll <- enrichAll(biodata,dbs, cut_off)
+listAll <- enrichAll(biodata,dbs, cut.off)
 
 #data analysis
 data.type <- c("GO.MF","GO.BP","KEGG")
 
 #GO MF Terms
-listMFAll <- analysisAll(listAll$GO.MF, data.type[1],listAll$data.with.genes, genes.cover[1],p.adjust.method, min_genes)
+listMFAll <- analysisAll(listAll$GO.MF, data.type[1],listAll$data.with.genes, genes.cover[1],p.adjust.method, min.genes)
 
 #GO BP Terms
-listBPAll <- analysisAll(listAll$GO.BP, data.type[2],listAll$data.with.genes, genes.cover[2],p.adjust.method, min_genes)
+listBPAll <- analysisAll(listAll$GO.BP, data.type[2],listAll$data.with.genes, genes.cover[2],p.adjust.method, min.genes)
 
 #KEGG Pathways
 pathviewAll <- getKEGGIds(listAll$KEGG)          #get pathview input data
-listKEGGAll <- analysisAll(listAll$KEGG, data.type[3],listAll$data.with.genes, genes.cover[3],p.adjust.method , min_genes)
+listKEGGAll <- analysisAll(listAll$KEGG, data.type[3],listAll$data.with.genes, genes.cover[3],p.adjust.method , min.genes)
 
 #join GO Molecular Function and Biological Process outputs
 dataAll <- full_join(listMFAll$data.withP, listBPAll$data.withP, by = "TAD")
 
 
 #enrichment per TAD
-listPerTAD <- enrichPerTAD(biodata, dbs, cut_off)
+listPerTAD <- enrichPerTAD(biodata, dbs, cut.off)
 
 #GO MF Terms
-listMFPerTAD <- analysisPerTAD(listPerTAD$GO.MF, data.type[1],listPerTAD$data.with.genes, genes.cover[1], p.adjust.method, min_genes)
+listMFPerTAD <- analysisPerTAD(listPerTAD$GO.MF, data.type[1],listPerTAD$data.with.genes, genes.cover[1], p.adjust.method, min.genes)
 
 #GO BP Terms
-listBPPerTAD <- analysisPerTAD(listPerTAD$GO.BP, data.type[2],listPerTAD$data.with.genes, genes.cover[2], p.adjust.method, min_genes)
+listBPPerTAD <- analysisPerTAD(listPerTAD$GO.BP, data.type[2],listPerTAD$data.with.genes, genes.cover[2], p.adjust.method, min.genes)
 
 #KEGG Pathways
 pathviewPerTAD <- getKEGGIds(listPerTAD$KEGG)        #get pathview input data
-listKEGGPerTAD <- analysisPerTAD(listPerTAD$KEGG, data.type[3],listPerTAD$data.with.genes, genes.cover[3], p.adjust.method, min_genes)
+listKEGGPerTAD <- analysisPerTAD(listPerTAD$KEGG, data.type[3],listPerTAD$data.with.genes, genes.cover[3], p.adjust.method, min.genes)
 
 #join GO Molecular Function and Biological Process outputs
 dataPerTAD <- full_join(listMFPerTAD$data.withP, listBPPerTAD$data.withP, by = "TAD")
