@@ -36,13 +36,13 @@ BiocManager::install(c("KEGGREST","pathview","PWMEnrich","PWMEnrich.Hsapiens.bac
 
 The project consists of one main script:
 
--enrichmentAnalysis.R
+- enrichmentAnalysis.R
 
 and three additional scripts, that contain the functions called by the main script:
 
--goPathwayEnrich.R
--motifEnrich.R
--visualization.R
+- goPathwayEnrich.R
+- motifEnrich.R
+- visualization.R
 
 In order to run the project, using the sample input provided in the Datasets folder, run the following command:
 
