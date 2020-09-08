@@ -88,7 +88,7 @@ histogramPlot <- function(string,type,data.visual){
       axis.title.y = element_text(size = 13, vjust = 0.5,hjust = 0.5)
     )
  
-  save_as_png(print(p2), file.name = paste(string, "/",type," in different TADs", ".png", sep = ""), height = 7, width = 13)
+  save_as_png(print(p2), file.name = paste(string, "/",type," in different TADs", ".png", sep = ""), height = (0.5*nrow(data.plot2)+2), width = 13)#, height = 7, width = 13)
   
   
   #plot 2.5
@@ -112,7 +112,7 @@ histogramPlot <- function(string,type,data.visual){
       axis.title.y = element_text(size = 13, vjust = 0.5,hjust = 0.5)
     )
   
-  save_as_png(print(p2.5), file.name = paste(string, "/Top ",type, ".png", sep = ""), height = 7, width = 13)
+  save_as_png(print(p2.5), file.name = paste(string, "/Top ",type, ".png", sep = ""),height = (0.5*nrow(data.plot2)+2), width = 13)#, height = 7, width = 13)
   
 }
 
