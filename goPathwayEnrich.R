@@ -1,12 +1,12 @@
 #This file contains functions used in the "enrichmentAnalysis.R" script
 
 
-#This function is called by the "analysisAll" and "analysisPerTAD" functions
+#This function is called by the "dataAnalysis" function
 #It is used to calcualte the P value and the adjusted P value for every Term per TAD
-calculatePvalue <- function(data ,data_ ,Gene.Coverage ,adjust.method ) {
+calculatePvalue <- function(data.extended ,data_selected ,genes.coverage ,p.adjust.method ) {
   
-  data <- data[which(data$tad_name != "NA"),]
-  tads <- unique(data$tad_name)
+  data.extended <- data.extended[which(data.extended$tad_name != "NA"),]
+  tads <- unique(data.extended$tad_name)
   
   data.with.p <- data.table(Term = character(),
                             TAD = character(),
@@ -18,7 +18,7 @@ calculatePvalue <- function(data ,data_ ,Gene.Coverage ,adjust.method ) {
   for (i in iterations){
     
     tad <- tads[i]
-    tad.terms <- data[which(data$tad_name == tad),]
+    tad.terms <- data.extended[which(data.extended$tad_name == tad),]
     terms.number <- dplyr::count(tad.terms,Term)
     iter <- c(1:nrow(terms.number))
     
@@ -26,8 +26,8 @@ calculatePvalue <- function(data ,data_ ,Gene.Coverage ,adjust.method ) {
       
       hitInSample <- terms.number$n[j]
       hitInPop <- tad.terms[which(tad.terms$Term == as.character(terms.number[j,1])),denominator]
-      failInPop <- Gene.Coverage -  hitInPop
-      tad.genes <- data_[which(data_$tad_name == tad),]
+      failInPop <- genes.coverage -  hitInPop
+      tad.genes <- data_selected[which(data_selected$tad_name == tad),]
       tad.genes <- tad.genes[which(tad.genes$Gene_id != ""),]
       sampleSize <- length(tad.genes$Gene_id)
       
@@ -48,7 +48,7 @@ calculatePvalue <- function(data ,data_ ,Gene.Coverage ,adjust.method ) {
   data.with.p <- unique(data.with.p)
   
   #p adjust
-  data.with.p$P.adjust <- p.adjust(data.with.p$P.value, method = adjust.method)
+  data.with.p$P.adjust <- p.adjust(data.with.p$P.value, method = p.adjust.method)
   
   return(data.with.p) 
 }
@@ -107,18 +107,18 @@ enrichPerTAD <- function(biodata,dbs, threshold){
   #data.tables to store the enrichment results
   enriched_MF <- data.table(Term = character(),
                             Overlap = character(),
+                            P.value = numeric(), 
+                            Adjusted.P.value = numeric(),
+                            Old.P.value = numeric(),
+                            Old.Adjusted.P.value = numeric(), 
+                            Odds.Ratio = numeric(), 
+                            Combined.Score = numeric(), 
                             Genes = character(),
                             stringsAsFactors = F)
   
-  enriched_BP <- data.table(Term = character(),
-                            Overlap = character(),
-                            Genes = character(),
-                            stringsAsFactors = F)
+  enriched_BP <- enriched_MF
   
-  enriched_KEGG <- data.table(Term = character(),
-                              Overlap = character(),
-                              Genes = character(),
-                              stringsAsFactors = F)
+  enriched_KEGG <- enriched_MF
   
   #iterations <- c(1:10)
   iterations <- c(1:length(unique.tads))
@@ -140,8 +140,6 @@ enrichPerTAD <- function(biodata,dbs, threshold){
       
       if (nrow(enriched_terms)>0){
         enriched_terms <- subset(enriched_terms, Adjusted.P.value < threshold)
-        enriched_terms <- enriched_terms %>%
-          dplyr::select(Term,Overlap,Genes)
         
         if(dbs[l] == "GO_Molecular_Function_2018"){
           enriched_MF <- rbind(enriched_MF,enriched_terms)
@@ -160,7 +158,7 @@ enrichPerTAD <- function(biodata,dbs, threshold){
 }
 
 
-#This function is called by the "analysisAll" and "analysisPerTAD" functions
+#This function is called by the "dataAnalysis" function
 #It manipulates the enriched data after the analysis and creates three output data.tables 
 #to be used for the Output csv files and the visualization
 produceOutputs <- function(data.with.p,type){
@@ -229,14 +227,14 @@ produceOutputs <- function(data.with.p,type){
   }
   
   
-  newList <- list(data.visual = data.visual, data.perTerm = data.per.term, data.withP = data.with.p)
+  newList <- list(data.visual = data.visual, data.perTerm = data.per.term, data.perTAD = data.with.p)
   return(newList)
 }
 
 
 #This function is called by the "enrichmentAnalysis.R" script
 #It manipulates the enriched data and performs hypergeometric test
-analysisAll <- function(enriched_terms, type,data_selected, genes.coverage, p.adjust.method, min_genes){
+dataAnalysis <- function(enriched_terms, type,data_selected, genes.coverage, p.adjust.method, min_genes){
     
     if (nrow(enriched_terms)>0){
       
@@ -250,19 +248,26 @@ analysisAll <- function(enriched_terms, type,data_selected, genes.coverage, p.ad
       enriched_terms$denominator <- as.numeric(as.character(enriched_terms$denominator))
       enriched_terms <- enriched_terms[which(enriched_terms$numerator >= min_genes),]
       
+      
+      enriched_terms <- enriched_terms %>%
+          dplyr::select(Term, denominator, Genes)%>%
+          group_by(Term) %>%
+          summarise(Term, 
+                    denominator = max(denominator),
+                    Genes = paste(Genes, collapse =";"),) %>%
+          as.data.table() %>%
+          unique()
+      
+      
       data.extended <- enriched_terms %>%
         separate_rows(Genes, sep = ";", convert = TRUE) %>%
         as.data.table()
       
       data.extended <- left_join(data.extended,data_selected, by =c("Genes" = "Gene_id"))
       
-      data.with.p <- data.table(Term = character(),
-                                TAD = character(),
-                                P.value = numeric(),
-                                P.adjust = numeric(),
-                                stringsAsFactors = F)
+      data.extended <- unique(data.extended) 
       
-      data.with.p <- calculatePvalue(data = data.extended,data_ = data_selected, Gene.Coverage = genes.coverage, adjust.method = p.adjust.method)
+      data.with.p <- calculatePvalue(data.extended,data_selected, genes.coverage, p.adjust.method)
       
       resultsList <- produceOutputs(data.with.p,type)
       
@@ -272,56 +277,10 @@ analysisAll <- function(enriched_terms, type,data_selected, genes.coverage, p.ad
 }
 
 
-#This function is called by the "enrichmentAnalysis.R" script
-#It manipulates the enriched data and performs hypergeometric test
-analysisPerTAD <- function(enriched_terms,type, data_, genes.coverage, p.adjust.method, min_genes){
-
-    enriched_terms <- enriched_terms %>%
-      dplyr::select(Genes,Term,Overlap)
-    
-    #calculate number of genes per term in database
-    enriched_terms <- enriched_terms %>%
-      separate(Overlap, c("numerator", "denominator"), sep = "\\/")
-    enriched_terms$numerator <- as.numeric(as.character(enriched_terms$numerator))
-    enriched_terms$denominator <- as.numeric(as.character(enriched_terms$denominator))
-    enriched_terms <- enriched_terms[which(enriched_terms$numerator >= min_genes),]
-    
-    enriched_terms <- enriched_terms %>%
-      dplyr::select(Term, denominator, Genes)%>%
-      group_by(Term) %>%
-      summarise(Term, 
-                denominator = max(denominator),
-                Genes = paste(Genes, collapse =";"),) %>%
-      as.data.table() %>%
-      unique()
-    
-    data.extended <- enriched_terms %>%
-      separate_rows(Genes, sep = ";", convert = TRUE) %>%
-      as.data.table()
-    
-    data.extended <- left_join(data.extended,data_, by =c("Genes" = "Gene_id")) %>%
-      unique()
-    data.extended <- data.extended %>%
-      dplyr::select(Genes, Term, denominator, tad_name)
-    
-    data.with.p <- data.table(Term = character(),
-                              TAD = character(),
-                              P.value = numeric(),
-                              P.adjust = numeric(),
-                              stringsAsFactors = F)
-    
-    data.with.p <- calculatePvalue(data = data.extended,data_ = data_, Gene.Coverage = genes.coverage, adjust.method = p.adjust.method)
-    
-    resultsList <- produceOutputs(data.with.p,type)
-    
-    return(resultsList)
-  
-}
-
 
 #This function is called by the "enrichmentAnalysis.R" script
 #It is used to query the KEGG Pathway DB about the Kegg ids of the pathways returned from the enrichment analysis
-getKEGGIds <- function(enriched_KEGG){
+getKEGGIds <- function(enriched_KEGG, genes_diff){
   
   enriched_KEGG <- enriched_KEGG %>%
     dplyr::select(Term, Genes)
@@ -349,8 +308,48 @@ getKEGGIds <- function(enriched_KEGG){
   }
   
   enriched_KEGG <- enriched_KEGG[which(enriched_KEGG$ID != "NA"),]
-
-  return(enriched_KEGG)
+  
+  genes_diff <- genes_diff %>% 
+    separate_rows(Gene_id, sep = "\\|") %>%
+    as.data.table()
+  genes_diff <- genes_diff[which((genes_diff$Gene_id != "NA") &(genes_diff$Gene_id !="")), ]
+  
+  output.csv <- data.table(Term = character(),
+                           ID = character(),
+                           Genes = character(),
+                           diff = character())
+  pathview.input <- data.table(Term = character(),
+                               ID = character(),
+                               Genes = character(),
+                               diff = character())
+  
+  loops <- c(1:nrow(enriched_KEGG))
+  for (l in loops){
+    
+    path <- enriched_KEGG[l]
+    path <- path %>%
+      separate_rows(Genes, sep = ";", convert = TRUE) %>%
+      unique() %>%
+      as.data.table()
+    path <- merge(path, genes_diff,by.x = "Genes", by.y = "Gene_id")
+    path <- group_by(path,Genes) %>%
+      dplyr::summarise(ID,Term,Genes,diff = mean(diff)) %>%
+      as.data.table() %>%
+      unique()
+    
+    output.path <- path %>%
+      group_by(Term, ID) %>%
+      summarise(Term, ID, Genes = paste0(Genes, collapse = "|"),diff = paste0(diff, collapse ="|")) %>%
+      unique()
+    
+    output.csv <- rbind(output.csv, output.path)
+    
+    pathview.input <- rbind(pathview.input, path)
+    
+  }
+  
+  newList <- list(pathview.input = pathview.input, output.csv = output.csv )
+  return(newList)
 }
 
 
@@ -385,9 +384,17 @@ createFolders <- function(output_folder){
   dir.create(motif_output_folder, showWarnings = FALSE)
   dir.create(image_output_folder, showWarnings = FALSE)
   
-  folder.names <-c(go_all_outputs, go_all_images,go_per_outputs,go_per_images,
-                   kegg_all_outputs,kegg_all_images,kegg_per_outputs,kegg_per_images,motif_output_folder,image_output_folder)  
-  
-  return(folder.names)
+  folder <- list(goAllOutputs = go_all_outputs,
+                 goAllImages = go_all_images,
+                 goPerOutputs = go_per_outputs,
+                 goPerImages = go_per_images,
+                 keggAllOutputs = kegg_all_outputs,
+                 keggAllImages = kegg_all_images,
+                 keggPerOutputs = kegg_per_outputs,
+                 keggPerImages = kegg_per_images,
+                 motifOutputsFolder = motif_output_folder,
+                 motifImageOutputs = image_output_folder)  
+ 
+  return(folder)
 }
 

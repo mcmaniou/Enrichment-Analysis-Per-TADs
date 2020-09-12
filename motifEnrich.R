@@ -3,10 +3,10 @@
 
 #This function is called by the "motifEnrich" function
 #It is used to find the sequences, that correspond to TFBS from the genomic coordinates of the events
-mergeSequences <- function(data){
+mergeSequences <- function(biodata){
   
   #filter for the sequences related to TFs location
-  data <- data[str_detect(data$Gene_locus,"promoter|intergenic|fiveUTR"),]
+  data <- biodata[str_detect(biodata$Gene_locus,"promoter|intergenic|fiveUTR"),]
   data <- data %>%
     dplyr::select(tad_name,chromosome_name,start_position,end_position)
   
@@ -64,7 +64,7 @@ mergeSequences <- function(data){
 #This function is called by the "motifEnrich" function
 #It is used to query the Rest Ensembl API  
 #It gets the DNA sequences that correspond to the genomic coordinates of the events
-getSequences <- function(input.data, outputs_folder){
+getDNASequences <- function(input.data, outputs_folder){
   
   #query Ensembl Rest Api to get the sequences 
   #per TAD so as not to lose the TAD information
@@ -119,7 +119,7 @@ getSequences <- function(input.data, outputs_folder){
 }
 
 
-#This function is called by the "motifEnrich" function
+#This function is called by the "enrichmentAnalysis.R" script 
 #It manipulates the enriched data after the analysis and creates three output data.tables 
 #to be used for the Output csv files and the visualization
 motifOutputs <- function(report.list){
@@ -229,7 +229,7 @@ motifOutputs <- function(report.list){
 #This function is called by the "enrichmentAnalysis.R" script
 #It performs enrichment analysis using the PWMEnrich tool
 #PWMEnrich input is the DNA sequences grouped per TAD
-motifEnrich <- function(motif.data, motif_output_folder){
+motifEnrich <- function(biodata, motif_output_folder){
   
   #number of cores available for motif enrichment analysis
   #N <- 3
@@ -238,24 +238,18 @@ motifEnrich <- function(motif.data, motif_output_folder){
   #registerCoresPWMEnrich(N)
   #useBigMemoryPWMEnrich(TRUE)
   
-  start_motifEA_time <- Sys.time()
-  
-  motif.data <- mergeSequences(motif.data)
-  
-  merge_time = Sys.time()
-  
-  seq.tad.number <- getSequences(motif.data,motif_output_folder)
-  
-  translate_time <- Sys.time()
-  
+  motif.data <- mergeSequences(biodata)
+ 
+  seq.tad.number <- getDNASequences(motif.data,motif_output_folder)
+ 
   #perform motif enrichment analysis using PWMEnrich
   report.list <- list()
   
   # load the pre-compiled lognormal background
   data(PWMLogn.hg19.MotifDb.Hsap)
   l <- 1
-  iterations <- c(1:5)
-  #iterations <- c(1:nrow(seq.tad.number))
+  #iterations <- c(1:5)
+  iterations <- c(1:nrow(seq.tad.number))
   for (i in iterations){
     
     sequence = readDNAStringSet(paste0(motif_output_folder,"/seq_perTADs.fasta"), format="fasta", skip = (seq.tad.number$start[i]-1), nrec = (seq.tad.number$end[i]-seq.tad.number$start[i]+1) )
@@ -268,19 +262,10 @@ motifEnrich <- function(motif.data, motif_output_folder){
     l <- l+1
     
   }
-  
-  end_time = Sys.time()
-  
+ 
   #registerCoresPWMEnrich(NULL)
   #useBigMemoryPWMEnrich(FALSE)
   
-  file.create(paste0(motif_output_folder,"/report_motif.txt"), showWarnings = FALSE)
-  dput(report.list, file = paste0(motif_output_folder,"/report_motif.txt"))
-  
-  #report.list <- dget(paste0(motif_output_folder,"/report_motif.txt"))
-  
-  listMotifEA <- motifOutputs(report.list)
-  
-  return(listMotifEA)
+  return(report.list)
   
 }

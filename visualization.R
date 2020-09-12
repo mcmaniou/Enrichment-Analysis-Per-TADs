@@ -300,48 +300,23 @@ enrichrVisual <- function(output_folder, type, data.visual){
 #This function is called from the "enrichrVisual.R" script
 #It creates a folder with graphs of KEGG pathways' maps using the Pathview tool
 #The folder name is "Pathview"
-pathVisual <- function(full.data, pathview.input , output_folder, keggOutputs){
-  
-  pathview.input <- pathview.input[which(pathview.input$ID != "NA"),]
-  
-  data.S <- full.data %>% 
-    dplyr::select(Gene_id, diff)
-  data.S <- data.S %>% 
-    separate_rows(Gene_id, sep = "\\|") %>%
-    as.data.table()
-  data.S <- data.S[which((data.S$Gene_id != "NA") &(data.S$Gene_id !="")), ]
+pathVisual <- function(pathview.input , output_folder){
   
   new.dir <- paste0(output_folder,"/Pathview")
   dir.create(new.dir, showWarnings = FALSE)
   
-  output.csv <- data.table(Term = character(),
-                           ID = character(),
-                           Genes = character(),
-                           diff = character())
+  pathview.input <- group_by(pathview.input,ID)
   
-  loops <- c(1:nrow(pathview.input))
+  pathview.input$diff <- as.numeric(pathview.input$diff)
+  
+  groups <- group_split(pathview.input)
+  
+  loops <- c(1:length(groups))
   for (l in loops){
     
-    path <- pathview.input[l]
-    path <- path %>%
-      separate_rows(Genes, sep = ";", convert = TRUE) %>%
-      unique() %>%
-      as.data.table()
-    path <- merge(path, data.S,by.x = "Genes", by.y = "Gene_id")
-    path <- group_by(path,Genes) %>%
-      dplyr::summarise(ID,Term,Genes,diff = mean(diff)) %>%
-      as.data.table() %>%
-      unique()
+    path <- groups[[l]]
     
-    output.path <- path %>%
-      group_by(Term, ID) %>%
-      summarise(Term, ID, Genes = paste0(Genes, collapse = "|"),diff = paste0(diff, collapse ="|")) %>%
-      unique()
-    
-    output.csv <- rbind(output.csv, output.path)
- 
     path <- path %>% remove_rownames %>% column_to_rownames(var = "Genes")
-    
     
     if (nrow(path)>1){
       
@@ -353,8 +328,8 @@ pathVisual <- function(full.data, pathview.input , output_folder, keggOutputs){
       
       p.input <- as.matrix(path[,3])
       rownames(p.input) <- rownames(path)
-     
-       p <- pathview(gene.data  = p.input,
+      
+      p <- pathview(gene.data  = p.input,
                     pathway.id =  path$ID[1],
                     species    = "hsa",
                     gene.idtype = "SYMBOL",
@@ -365,12 +340,11 @@ pathVisual <- function(full.data, pathview.input , output_folder, keggOutputs){
       
       
       file.copy(current.folder,new.folder,overwrite = T)
+      
       file.remove(current.folder)
       
     }
   }
-  
-  fwrite(output.csv, paste0(keggOutputs, "/Pathview input.csv"),row.names = FALSE, sep = "\t", quote = FALSE)
 }
 
 
