@@ -54,15 +54,16 @@ If you want to change the input data, the path of the file must be provided in t
 
 The output is stored in the [Outputs](Outputs) folder.
 
-In the main script, the user can change the following parameters: 
-1. The method used for adjustment of the p-values of the enrichment analysis ```p.adjust.method```
-(default value is ```"fdr"```, accepted values are ``` "holm", "hochberg", "hommel", "bonferroni", "BH", "BY", "fdr", "none"```)
-2. The threshold of significant p-values ```cut.off```
-(default value is 0.05)
-3. The minimum number of genes in over-represented terms ```min.genes```
-(default value is ```3```)
-4. The OS of the local machine ```system```
-(default value is ```"win"```)
+The main script has the following inputs: 
+1. ```dbs```: vector with a list of the Enrichr libraries used for the enrichment analysis (default is the vector ```c("GO_Molecular_Function_2018", "GO_Biological_Process_2018", "KEGG_2019_Human")```, for the complete list of the Enrichr libraries type the command ```listEnrichrDbs()```) 
+2. ```genes.cover```: vector with the number of genes covered by the Enrichr libraries, which are in the ```dbs``` (taking into account the chosen libraries, default is ```c(11459,14433,7802)```) 
+3. ```dir_name``` : the name of the input data folder (default value is ```Datasets```)
+4. ```output_folder``` : the name of the outputs folder (default value is ```Outputs```)
+5. ```filepath```: the filepath of the input dataset
+6. ```p.adjust.method```: the method used for adjustment of the p-values of the enrichment analysis (default value is ```"fdr"```, accepted values are ``` "holm", "hochberg", "hommel", "bonferroni", "BH", "BY", "fdr", "none"```)
+7. ```cut.off```: the threshold of significant p-values (default value is 0.05)
+8. ```min.genes```: the minimum number of genes in over-represented terms (default value is ```3```)
+9. ```system```: the OS of the local machine (default value is ```"win"```)
 
 ## Data
 
