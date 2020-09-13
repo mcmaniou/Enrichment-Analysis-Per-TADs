@@ -222,7 +222,7 @@ produceOutputs <- function(data.with.p,type){
     
     colnames(data.with.p) <- c("TAD","Term","P.value","P.adjust")
     colnames(data.visual) <- c("TAD","Term","P.value","P.adjust")
-    colnames(data.per.term) <- c("TAD","Term","P.value","P.adjust")
+    colnames(data.per.term) <- c("Term","TAD","P.value","P.adjust")
     
   }
   
