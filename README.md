@@ -61,7 +61,7 @@ The main script has the following inputs:
 4. ```output_folder``` : the name of the outputs folder (default value is ```Outputs```)
 5. ```filepath```: the filepath of the input dataset
 6. ```p.adjust.method```: the method used for adjustment of the p-values of the enrichment analysis (default value is ```"fdr"```, accepted values are ``` "holm", "hochberg", "hommel", "bonferroni", "BH", "BY", "fdr", "none"```)
-7. ```cut.off```: the threshold of significant p-values (default value is 0.05)
+7. ```cut.off```: the threshold of significant p-values (default value is ```0.05```)
 8. ```min.genes```: the minimum number of genes in over-represented terms (default value is ```3```)
 9. ```system```: the OS of the local machine (default value is ```"win"```)
 
