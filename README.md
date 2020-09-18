@@ -44,13 +44,13 @@ and three additional scripts, that contain the functions called by the main scri
 - motifEnrich.R
 - visualization.R
 
-In order to run the project, using the sample input provided in the [Datasets](Datasets) folder, run the following command:
+In order to run the project use the following command:
 
 ```
 source("enrichmentAnalysis.R")
 ```
 
-If you want to change the input data, the path of the file must be provided in the main script.
+By default the project runs using the sample input provided in the [Datasets](Datasets) folder. If you want to change the input data, the path of the file must be provided in the ```enrichmentAnalysis.R``` script in the parameter ```filepath``` in line 56.
 
 The output is stored in the [Outputs](Outputs) folder.
 
