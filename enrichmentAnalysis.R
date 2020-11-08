@@ -1,4 +1,5 @@
 ########## Loading libraries ########## 
+library(pryr)
 library(PWMEnrich)
 library(PWMEnrich.Hsapiens.background)
 library(tidyverse)
@@ -24,13 +25,19 @@ library(saveImageHigh)
 library(KEGGREST)
 library(ggpubr)
 
-start_time = Sys.time()
-
 source("motifEnrich.R")
 source("goPathwayEnrich.R")
 source("visualization.R")
 
 ########### Inputs ########## 
+
+#scal_test <- data.table(part = character(6),
+#                        time = character(6),
+#                        memory = numeric(6) )
+
+#scal_test$part[1] <- "start"
+#scal_test$time[1] <- format(Sys.time(), "%d-%b-%Y %H.%M.%S")
+#scal_test$memory[1] <- mem_used()
 
 #databases used from EnrichR
 dbs <- c("GO_Molecular_Function_2018","GO_Biological_Process_2018","KEGG_2019_Human")
@@ -51,15 +58,24 @@ min.genes <- 3
 #RStudio supports different fonts for different operating systems
 system = "win"
 
-dir_name = "Datasets"
-output_folder = "Outputs"
-filepath = paste(dir_name, "/integrated_table_with_sign_tads-sample_input.csv", sep = "")
+#dir_name = "Datasets"
+#output_folder = "Outputs"
+#filepath = paste(dir_name, "/integrated_table_with_sign_tads-sample_input.csv", sep = "")
+
+dir_name = "Datasets-all"
+output_folder = "Outputs-1"
+filepath = paste(dir_name, "/integrated_table_with_sign_tads-ENSG.csv", sep = "")
 
 folder <- createFolders(output_folder)
 
 biodata = fread(filepath)
 
+#biodata <- biodata[40000:63426,]
+
 ########### Enrichment + Data Analysis ##########
+#scal_test$part[2] <- "before enrich all"
+#scal_test$time[2] <- format(Sys.time(), "%d-%b-%Y %H.%M.%S")
+#scal_test$memory[2] <- mem_used()
 
 #enrichment all
 listAll <- enrichAll(biodata,dbs, cut.off)
@@ -80,7 +96,9 @@ listKEGGAll <- dataAnalysis(listAll$KEGG, data.type[3],listAll$data.with.genes, 
 #join GO Molecular Function and Biological Process outputs
 dataAll <- full_join(listMFAll$data.perTAD, listBPAll$data.perTAD, by = "TAD")
 
-
+#scal_test$part[3] <- "before enrich per TAD"
+#scal_test$time[3] <- format(Sys.time(), "%d-%b-%Y %H.%M.%S")
+#scal_test$memory[3] <- mem_used()
 #enrichment per TAD
 listPerTAD <- enrichPerTAD(biodata, dbs, cut.off)
 
@@ -97,12 +115,19 @@ listKEGGPerTAD <- dataAnalysis(listPerTAD$KEGG, data.type[3],listPerTAD$data.wit
 #join GO Molecular Function and Biological Process outputs
 dataPerTAD <- full_join(listMFPerTAD$data.perTAD, listBPPerTAD$data.perTAD, by = "TAD")
 
+#scal_test$part[4] <- "before motif EA"
+#scal_test$time[4] <- format(Sys.time(), "%d-%b-%Y %H.%M.%S")
+#scal_test$memory[4] <- mem_used()
+
 #motif enrichment
-report.list <- motifEnrich(biodata, folder$motifOutputsFolder)
+report.list <- motifEnrich(biodata, folder$motifOutputsFolder,p.adjust.method, cut.off)
+#report.list <- dget(paste0(folder$motifOutputsFolder,"/report MotifEA.txt"))
 listMotif <- motifOutputs(report.list)
 
 ########### Output Files ########## 
-end_enrich_all = Sys.time()
+#scal_test$part[5] <- "before outputs"
+#scal_test$time[5] <- format(Sys.time(), "%d-%b-%Y %H.%M")
+#scal_test$memory[5] <- mem_used()
 
 #enrichment all
 fwrite(dataAll, paste(folder$goAllOutputs, "/over-represented GO terms-enrichment all.csv", sep = ""), 
@@ -138,8 +163,8 @@ fwrite(listMotif$table_perTAD, paste0(folder$motifOutputsFolder, "/over-represen
        row.names = FALSE, sep = "\t", quote = FALSE)
 fwrite(listMotif$table_perTFs, paste0(folder$motifOutputsFolder, "/TFs in different TADs.csv"), 
        row.names = FALSE, sep = "\t", quote = FALSE)
-file.create(paste0(folder$motifOutputsFolder,"/report_motif.txt"), showWarnings = FALSE)
-dput(report.list, file = paste0(folder$motifOutputsFolder,"/report_motif.txt"))
+file.create(paste0(folder$motifOutputsFolder,"/report MotifEA.txt"), showWarnings = FALSE)
+dput(report.list, file = paste0(folder$motifOutputsFolder,"/report MotifEA.txt"))
 
 ########### Visualization ##########
 
@@ -158,9 +183,12 @@ enrichrVisual(folder$keggPerImages, "KEGG Pathways",listKEGGPerTAD$data.visual)
 pathVisual(listPathPerTAD$pathview.input ,folder$keggPerImages)
 
 #motif enrichment analysis visualization
-#report.list <- dget(paste0(folder$motifOutputsFolder,"/report_motif.txt"))
+#report.list <- dget(paste0(folder$motifOutputsFolder,"/report MotifEA.txt"))
 motifVisual(folder$motifImageOutputs, folder$motifOutputsFolder, listMotif$data.visual, report.list)
 
-total_time <- Sys.time()
+#scal_test$part[6] <- "end"
+#scal_test$time[6] <- format(Sys.time(), "%d-%b-%Y %H.%M")
+#scal_test$memory[6] <- mem_used()
 
-
+#fwrite(scal_test, paste0(getwd(), "/scalability test 4-new.csv"),
+#       row.names = FALSE, sep = "\t", quote = FALSE)

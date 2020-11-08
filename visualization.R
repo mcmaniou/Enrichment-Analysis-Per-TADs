@@ -132,6 +132,8 @@ networkPlot <- function(string,type,data.visual){
     go_count <- go_count[1:10,]
     data.plot5 <- merge(data.visual,go_count, by = "Term")
     
+    if (nrow(data.plot5)==10){return(NULL)}
+    
     nodes <- data.plot5%>%
       dplyr::select(TAD,Term)
     
@@ -368,7 +370,7 @@ perTADPlots <- function(report.list,image_output_folder){
   
   
   data.plot5 <- data.table(P.value = numeric(),
-                           RawScores = numeric())
+                           Adjusted.P.value = numeric())
   for (i in iterations){
     
     tad.dir = paste0(image_output_folder, "/Plots per TADs/",report.list[[i]]@d$tad[1])
@@ -378,28 +380,34 @@ perTADPlots <- function(report.list,image_output_folder){
     png(filename = paste(tad.dir, "/PWMEnrich_Image.png", sep = ""),width = 1100, height = 1200)
     
     temp <-report.list[[i]]
-    temp@d <- temp@d[,1:6]
-    p <- plot(temp[1:10], fontsize=20, id.fontsize=20)
+    temp@d <- temp@d[,c(1:4,7,6)]
+    if (nrow(temp@d)>10){
+      temp <- temp[1:10]
+    }
+    p <- plot(temp, fontsize=20, id.fontsize=20)
     
     dev.off()
 
     tabl <- report.list[[i]]@d
     
     tableFor5 <- tabl %>%
-      dplyr::select(p.value,raw.score)
-    colnames(tableFor5) <- c("P.value", "RawScores")
+      dplyr::select(p.value,adjusted.p.value)
+    colnames(tableFor5) <- c("P.value", "Adjusted.P.value")
     
     data.plot5 <- rbind(data.plot5,tableFor5)
     
     #exclude uncharacterized motifs
     tabl <- tabl[str_detect(tabl$id,"UW.Motif.",negate = TRUE),]
     tabl <- tabl %>%
-      dplyr::select(target,tad,p.value) %>%
+      dplyr::select(target,tad,adjusted.p.value) %>%
       group_by(target,tad) %>%
-      summarise(target,tad, p.value = mean(p.value))%>%
+      summarise(target,tad, adjusted.p.value = mean(adjusted.p.value))%>%
       as.data.table() %>%
       unique()
-    tabl <- setorder(tabl, p.value)
+    #tabl = tabl %>%
+     #   dplyr::select(target,tad,adjusted.p.value) %>%
+      #tabl[,.(adjusted.p.value = mean(adjusted.p.value)), by = list(target),]
+    tabl <- setorder(tabl, adjusted.p.value)
     
     if (nrow(tabl)>30){
       text = "Showing top 30 Terms, for the complete list consult the over-represented TFs in each tad.csv"
@@ -410,11 +418,11 @@ perTADPlots <- function(report.list,image_output_folder){
     
     #plot 2
     p2 <- tabl %>%
-      ggplot(aes(x = as.factor(reorder(target, -p.value)),y = p.value)) +
+      ggplot(aes(x = as.factor(reorder(target, -adjusted.p.value)),y = adjusted.p.value)) +
       geom_histogram(fill="#66ccff", color="#e9ecef", alpha=0.9, stat = "identity") +
-      labs(title = paste0("P values of TFs in ",tabl$tad[1]), 
+      labs(title = paste0("Adjusted P values of TFs in ",tabl$tad[1]), 
            subtitle = text)+
-      ylab("Mean P value")+
+      ylab("Mean Adjusted P value")+
       xlab("Transcription Factors")+
       theme_ipsum() +
       theme(
@@ -472,11 +480,11 @@ perTFsPlots <- function(report.list, data.plot3.4, image_output_folder){
   
   dir.create(paste(image_output_folder, "/Transcription Factors", sep = ""), showWarnings = FALSE)
   data.plot3.4 <- data.plot3.4 %>%
-    separate_rows(P.value, sep = "\\|")
-  data.plot3.4$P.value <- as.numeric(data.plot3.4$P.value)
+    separate_rows(Adjusted.P.value, sep = "\\|")
+  data.plot3.4$Adjusted.P.value <- as.numeric(data.plot3.4$Adjusted.P.value)
   data.plot3.4 <- data.plot3.4 %>%
     group_by(TFs,TAD,top.motif)%>%
-    summarise(TFs,TAD, P.value = mean(P.value),Motifs, top.motif) %>%
+    summarise(TFs,TAD, Adjusted.P.value = mean(Adjusted.P.value),Motifs, top.motif) %>%
     unique()
   data.plot3.4 <- data.plot3.4[which(data.plot3.4$TFs != "NA"),]
   data.plot3 <- data.plot3.4 %>%
@@ -498,8 +506,8 @@ perTFsPlots <- function(report.list, data.plot3.4, image_output_folder){
     dir.create(string, showWarnings = F)
     
     #plot3
-    temp$P.value <- as.numeric(temp$P.value)
-    temp <- setorder(temp, P.value)
+    temp$Adjusted.P.value <- as.numeric(temp$Adjusted.P.value)
+    temp <- setorder(temp, Adjusted.P.value)
     
     if (nrow(temp)>29){
       text = "Showing top 30 Terms, for the complete list consult: TFs in different TADs.csv"
@@ -509,11 +517,11 @@ perTFsPlots <- function(report.list, data.plot3.4, image_output_folder){
     }
 
     p3 <- temp %>%
-      ggplot(aes(x = as.factor(reorder(TAD,-P.value)),y = P.value)) +
+      ggplot(aes(x = as.factor(reorder(TAD,-Adjusted.P.value)),y = Adjusted.P.value)) +
       geom_histogram(fill="#66ccff", color="#e9ecef", alpha=0.9, stat = "identity", binwidth = 0.5) +
-      labs(title = paste0("P values of ",temp$folder.name[1]," in different TADs"), 
+      labs(title = paste0("Adjusted P values of ",temp$folder.name[1]," in different TADs"), 
            subtitle = text)+
-      ylab("Mean P value")+
+      ylab("Mean Adjusted P value")+
       xlab("TAD number")+
       theme_ipsum() +
       theme(
@@ -546,19 +554,19 @@ perTFsPlots <- function(report.list, data.plot3.4, image_output_folder){
   
   #plot6
   
-  data.plot3.4$P.value <- as.numeric(data.plot3.4$P.value)
+  data.plot3.4$Adjusted.P.value <- as.numeric(data.plot3.4$Adjusted.P.value)
   data.plot3.4 <- data.plot3.4 %>%
     group_by(TFs,TAD,Motifs, top.motif) %>%
-    summarise(TFs, TAD, Motifs, P.value = mean(P.value),top.motif) %>%
+    summarise(TFs, TAD, Motifs, Adjusted.P.value = mean(Adjusted.P.value),top.motif) %>%
     as.data.table() %>%
     unique()
   
   terms <- dplyr::count(data.plot3.4,TFs)
   
   data.plot6 <- merge(terms, data.plot3.4) %>%
-    dplyr::select(TFs, n, P.value) %>%
+    dplyr::select(TFs, n, Adjusted.P.value) %>%
     group_by(TFs,n) %>%
-    summarise(TFs, n, P.value = mean(P.value)) %>%
+    summarise(TFs, n, Adjusted.P.value = mean(Adjusted.P.value)) %>%
     unique() 
   
   data.plot6 <- setorder(data.plot6,-n)
@@ -571,12 +579,12 @@ perTFsPlots <- function(report.list, data.plot3.4, image_output_folder){
   colnames(data.plot6) <- str_replace(colnames(data.plot6),"n","number.of.TADs")
   
   p6.5 <- data.plot6 %>%
-    ggplot(aes(x = as.factor(reorder(TFs,  number.of.TADs)),y = P.value, fill = number.of.TADs)) +
+    ggplot(aes(x = as.factor(reorder(TFs,  number.of.TADs)),y = Adjusted.P.value, fill = number.of.TADs)) +
     geom_histogram(color = "#e9ecef",stat = "identity") +
     labs(title = paste0("Top Transcription Factors in different TADs"), 
          subtitle = "Bar color corresponds to number of TADs each Term was found")+
     xlab("Transcription Factor")+
-    ylab("Mean P value")+
+    ylab("Mean Adjusted P value")+
     coord_flip() +
     theme_ipsum() +
     theme(
@@ -593,9 +601,9 @@ perTFsPlots <- function(report.list, data.plot3.4, image_output_folder){
   #plot7
   
   data.plot7 <- merge(terms, data.plot3.4) %>%
-    dplyr::select(TFs, n, P.value,top.motif) %>%
+    dplyr::select(TFs, n,Adjusted.P.value,top.motif) %>%
     group_by(TFs,n, top.motif) %>%
-    summarise(TFs, n,top.motif, P.value = mean(P.value)) %>%
+    summarise(TFs, n,top.motif, Adjusted.P.value = mean(Adjusted.P.value)) %>%
     unique() 
   
   data.plot7 <- setorder(data.plot7,-n)
@@ -607,14 +615,14 @@ perTFsPlots <- function(report.list, data.plot3.4, image_output_folder){
   
   colnames(data.plot7) <- str_replace(colnames(data.plot7),"n","number.of.TADs")
   
-  data.plot7 <- setorder(data.plot7, -P.value)
+  data.plot7 <- setorder(data.plot7, -Adjusted.P.value)
   p7 <- data.plot7 %>%
-    ggplot(aes(x = as.factor(reorder(TFs, -P.value)),y = P.value, fill = number.of.TADs)) +
-    geom_histogram(color = "#e9ecef",stat = "identity", width = 0.65) +
+    ggplot(aes(x = as.factor(reorder(TFs, -Adjusted.P.value)),y = Adjusted.P.value, fill = number.of.TADs)) +
+    geom_histogram(color = "#e9ecef",stat = "identity", width = 0.5) +
     labs(title = paste0("Top 10 Transcription Factors in different TADs and their top motifs"))+ #, 
     #    subtitle = "Bar color corresponds to number of TADs each Term was found")+
     xlab("Transcription Factor")+
-    ylab("Mean P value")+
+    ylab("Mean Adjusted P value")+
     coord_flip() +
     theme_ipsum() +
     theme(
@@ -632,7 +640,7 @@ perTFsPlots <- function(report.list, data.plot3.4, image_output_folder){
  
   pfm.motifs <- list()
   
-  data.plot7 <-setorder(data.plot7,P.value)
+  data.plot7 <-setorder(data.plot7,Adjusted.P.value)
   
   loops <- c(1:10)
   for (l in loops){
@@ -672,23 +680,24 @@ perTFsPlots <- function(report.list, data.plot3.4, image_output_folder){
 #This function is called by the "motifVisual" function
 #It creates a density plot of the P values of the Motif EA
 densityPlot <- function(data.plot5, image_output_folder){
-
-  p5 <- ggplot(data=data.plot5, aes(x=P.value)) +
-    geom_density(fill="#69b3a2", color="#e9ecef", alpha=0.8) +
+  
+  data.plot <- data.table(P.value = c(data.plot5$P.value, data.plot5$Adjusted.P.value),
+                           Type = c(rep_len("P value",nrow(data.plot5)),rep_len("Adjusted P value",nrow(data.plot5))),
+                           stringsAsFactors = F)
+  
+  p5 <- ggplot(data=data.plot, aes(x=P.value, group=Type, fill=Type)) +
+    geom_density(adjust=2, alpha=.8) +
     ggtitle("P values of Motifs") +
     xlab("P value")+
     ylab("Density")+
     theme_ipsum()+
     theme(
-      plot.title = element_text(size=15),
+      plot.title = element_text(size=16),
       axis.title.x = element_text(size = 15, vjust = 0.5,hjust = 0.5),
       axis.title.y = element_text(size = 15, vjust = 1.5,hjust = 0.5),
       legend.text = element_text(size=14),
       legend.title = element_text(size=15)
     )
-  
-  #print(p5)
-  #dev.off()
   
   save_as_png(print(p5), file.name =paste(image_output_folder, "/Density plot-P values of Motifs.png", sep = ""))
   

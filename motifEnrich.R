@@ -127,15 +127,16 @@ motifOutputs <- function(report.list){
   csv_perTAD <- data.table(TAD = character(),
                            TFs = character(),
                            Motifs = character(),
+                           Adjusted.P.value = character(),
                            P.value = character())
   
   csv_perTF <- data.table(TFs = character(),
                           TAD = character(),
-                          P.value = character(),
+                          Adjusted.P.value = character(),
                           Motifs = character())
   
   topMotifs <- data.table(target = character(),
-                          p.value = numeric(),
+                          adjusted.p.value = numeric(),
                           id = character())
   
   iterations <- c(1: length(report.list))
@@ -145,38 +146,39 @@ motifOutputs <- function(report.list){
     #exclude uncharacterized motifs
     temp <- temp[str_detect(temp$id,"UW.Motif.",negate = TRUE),]
     perTAD <- temp %>%
-      dplyr::select(tad,target,id,p.value) %>%
+      dplyr::select(tad,target,id,adjusted.p.value, p.value) %>%
       dplyr::summarise(TAD = tad,TFs = paste(target, collapse = "|"),
                        Motifs = paste(id, collapse = "|"),
+                       Adjusted.P.value = paste(adjusted.p.value, collapse = "|"),
                        P.value = paste(p.value, collapse = "|"),) %>%
       as.data.table()%>%
       unique()
     csv_perTAD <- rbind(csv_perTAD,perTAD)
     
     perTF.topMotif <- temp %>%
-      dplyr::select(target,p.value,id)
+      dplyr::select(target,adjusted.p.value,id)
     
     topMotifs <- rbind(topMotifs, perTF.topMotif)
     
     perTF <- temp %>%
-      dplyr::select(target,tad,p.value,id) %>%
+      dplyr::select(target,tad,adjusted.p.value,id) %>%
       group_by(target,tad) %>%
       dplyr::summarise(target, tad,
-                       P.value = paste(p.value, collapse = "|"),
+                       Adjusted.P.value = paste(adjusted.p.value, collapse = "|"),
                        Motifs = paste(id, collapse = "|"),) %>%
       as.data.table()%>%
       unique()
-    colnames(perTF) <- c("TFs", "TAD", "P.value", "Motifs")
+    colnames(perTF) <- c("TFs", "TAD", "Adjusted.P.value", "Motifs")
     csv_perTF <- rbind(csv_perTF,perTF)
   }
   
   data.visual <- csv_perTF %>%
-    dplyr::select(TFs,TAD,P.value)
+    dplyr::select(TFs,TAD,Adjusted.P.value)
   
   csv_perTF <- csv_perTF %>%
     group_by(TFs) %>%
     dplyr::summarise(TFs,TAD = paste(TAD,collapse ="|"),
-                     P.value = paste(P.value, collapse = "|"),
+                     Adjusted.P.value = paste(Adjusted.P.value, collapse = "|"),
                      Motifs = paste(Motifs, collapse = "|"),) %>%
     as.data.table()%>%
     unique()
@@ -206,14 +208,14 @@ motifOutputs <- function(report.list){
   
   topMotifs <- topMotifs %>%
     group_by(target, id) %>%
-    summarise(target, id, p.value = mean (p.value)) %>%
+    summarise(target, id, adjusted.p.value = mean (adjusted.p.value)) %>%
     unique()
   
   topMotifs <- topMotifs %>%
     group_by(target) %>%
-    summarise(target, P.value = min(p.value), id, p.value)
+    summarise(target, Adjusted.P.value = min(adjusted.p.value), id, adjusted.p.value)
   
-  topMotifs <- topMotifs[which(topMotifs$p.value == topMotifs$P.value),]
+  topMotifs <- topMotifs[which(topMotifs$adjusted.p.value == topMotifs$Adjusted.P.value),]
   
   topMotifs <- dplyr::select(topMotifs, target, id)
   colnames(topMotifs) <- c("TFs","top.motif")
@@ -229,7 +231,7 @@ motifOutputs <- function(report.list){
 #This function is called by the "enrichmentAnalysis.R" script
 #It performs enrichment analysis using the PWMEnrich tool
 #PWMEnrich input is the DNA sequences grouped per TAD
-motifEnrich <- function(biodata, motif_output_folder){
+motifEnrich <- function(biodata, motif_output_folder, p.adjust.method, cut.off){
   
   #number of cores available for motif enrichment analysis
   #N <- 3
@@ -249,23 +251,29 @@ motifEnrich <- function(biodata, motif_output_folder){
   data(PWMLogn.hg19.MotifDb.Hsap)
   l <- 1
   #iterations <- c(1:5)
-  iterations <- c(1:nrow(seq.tad.number))
+  #iterations <- c(1:nrow(seq.tad.number))
+  iterations <- c(226:nrow(seq.tad.number))
   for (i in iterations){
     
     sequence = readDNAStringSet(paste0(motif_output_folder,"/seq_perTADs.fasta"), format="fasta", skip = (seq.tad.number$start[i]-1), nrec = (seq.tad.number$end[i]-seq.tad.number$start[i]+1) )
     res = motifEnrichment(sequence, PWMLogn.hg19.MotifDb.Hsap)
     report = groupReport(res, by.top.motifs = TRUE)
-    report <- report[report$p.value < 0.05]
-    report.list[[l]]<-report
-    report.list[[l]]@d$tad <- seq.tad.number$tad[i]
     
-    l <- l+1
+    report@d$adjusted.p.value <- p.adjust(report@d$p.value, method = p.adjust.method)
+    report <- report[report$adjusted.p.value < cut.off]
     
+    if (nrow(report@d)>0){
+      report.list[[l]]<-report
+      report.list[[l]]@d$tad <- seq.tad.number$tad[i]
+      l <- l+1
+    }
   }
  
   #registerCoresPWMEnrich(NULL)
   #useBigMemoryPWMEnrich(FALSE)
-  
+  #filename <- paste0(motif_output_folder,"/report MotifEA.txt")
+  #file.create(filename, showWarnings = FALSE)
+  #dput(report.list, file = filename)
   return(report.list)
   
 }

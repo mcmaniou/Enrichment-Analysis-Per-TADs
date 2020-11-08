@@ -36,7 +36,7 @@ calculatePvalue <- function(data.extended ,data_selected ,genes.coverage ,p.adju
       
       temp <- data.table(Term = as.character(terms.number[j,1]),
                          TAD = as.character(tad),
-                         P.value = as.numeric(p.value),
+                         P.value = as.numeric(p.value[1]),
                          stringsAsFactors = F)
       
       data.with.p <- rbind(data.with.p ,temp)
@@ -45,7 +45,7 @@ calculatePvalue <- function(data.extended ,data_selected ,genes.coverage ,p.adju
   }
   
   data.with.p <- data.with.p[which(data.with.p$P.value != "NA"),]
-  data.with.p <- unique(data.with.p)
+  #data.with.p <- unique(data.with.p)
   
   #p adjust
   data.with.p$P.adjust <- p.adjust(data.with.p$P.value, method = p.adjust.method)
@@ -235,8 +235,6 @@ produceOutputs <- function(data.with.p,type){
 #This function is called by the "enrichmentAnalysis.R" script
 #It manipulates the enriched data and performs hypergeometric test
 dataAnalysis <- function(enriched_terms, type,data_selected, genes.coverage, p.adjust.method, min_genes){
-    
-    if (nrow(enriched_terms)>0){
       
       enriched_terms <- enriched_terms %>%
         dplyr::select(Term,Overlap,Genes)
@@ -272,7 +270,6 @@ dataAnalysis <- function(enriched_terms, type,data_selected, genes.coverage, p.a
       resultsList <- produceOutputs(data.with.p,type)
       
       return(resultsList)
-    }
   
 }
 
